@@ -1,32 +1,35 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
-
-	pkgruntime "github.com/yudai2929/event-driven-runtime/runtime"
+	"os"
+	"os/exec"
 )
 
-func main() {
-	runtime := pkgruntime.NewRuntime(10)
+func executeBinary(binaryPath string) (string, error) {
+	cmd := exec.Command(binaryPath)
 
-	runtime.RegisterHandler("greet", func(event pkgruntime.Event) string {
-		return fmt.Sprintf("Hello, Event ID: %d!", event.ID)
-	})
-	runtime.RegisterHandler("goodbye", func(event pkgruntime.Event) string {
-		return fmt.Sprintf("Goodbye, Event ID: %d!", event.ID)
-	})
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
 
-	runtime.Start()
-
-	go func() {
-		runtime.Emit(pkgruntime.Event{ID: 1, Payload: "greet"})
-		runtime.Emit(pkgruntime.Event{ID: 2, Payload: "goodbye"})
-		runtime.Emit(pkgruntime.Event{ID: 3, Payload: "unknown"})
-
-		runtime.Stop()
-	}()
-
-	for response := range runtime.ListenResponses() {
-		fmt.Println(response)
+	err := cmd.Run()
+	if err != nil {
+		return "", fmt.Errorf("execution failed: %v, stderr: %s", err, stderr.String())
 	}
+
+	return stdout.String(), nil
+}
+
+func main() {
+	binaryPath := "./bin/hello" // 必要に応じてパスを設定
+
+	output, err := executeBinary(binaryPath)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Output: %s\n", output)
 }

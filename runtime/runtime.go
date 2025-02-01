@@ -1,10 +1,8 @@
 package runtime
 
-import "sync"
-
 type Event struct {
-	ID      int
-	Payload string
+	ID  int
+	Key string
 }
 
 type EventHandler func(event Event) string
@@ -14,7 +12,6 @@ type Runtime struct {
 	handlers   map[string]EventHandler
 	stopChan   chan struct{}
 	reportChan chan string
-	wg         sync.WaitGroup
 }
 
 func NewRuntime(bufferSize int) *Runtime {
@@ -26,12 +23,11 @@ func NewRuntime(bufferSize int) *Runtime {
 	}
 }
 
-func (r *Runtime) RegisterHandler(eventType string, handler EventHandler) {
-	r.handlers[eventType] = handler
+func (r *Runtime) RegisterHandler(key string, handler EventHandler) {
+	r.handlers[key] = handler
 }
 
 func (r *Runtime) Emit(event Event) {
-	r.wg.Add(1)
 	r.eventQueue <- event
 }
 
@@ -40,13 +36,12 @@ func (r *Runtime) Start() {
 		for {
 			select {
 			case event := <-r.eventQueue:
-				handler, ok := r.handlers[event.Payload]
+				handler, ok := r.handlers[event.Key]
 				if ok {
 					r.reportChan <- handler(event)
 				} else {
-					r.reportChan <- "No handler registered for event type: " + event.Payload
+					r.reportChan <- "No handler registered for event type: " + event.Key
 				}
-				r.wg.Done()
 			case <-r.stopChan:
 				close(r.reportChan)
 				return
@@ -56,7 +51,6 @@ func (r *Runtime) Start() {
 }
 
 func (r *Runtime) Stop() {
-	r.wg.Wait()
 	close(r.stopChan)
 }
 
