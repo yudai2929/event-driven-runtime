@@ -5,25 +5,25 @@ import (
 	"os"
 )
 
-// FunctionStorage is an interface for storing functions.
-type FunctionStorage interface {
+// FunctionStorageClient is an interface for storing functions.
+type FunctionStorageClient interface {
 	Exists(name string) (bool, error)
 	FilePath(name string) string
 	Names() ([]string, error)
 }
 
-type functionStorage struct {
+type functionStorageClient struct {
 	hostDir string
 }
 
 // NewFunctionStorage creates a new function storage.
-func NewFunctionStorage(hostDir string) FunctionStorage {
-	return &functionStorage{
+func NewFunctionStorage(hostDir string) FunctionStorageClient {
+	return &functionStorageClient{
 		hostDir: hostDir,
 	}
 }
 
-func (s *functionStorage) Exists(name string) (bool, error) {
+func (s *functionStorageClient) Exists(name string) (bool, error) {
 	filePath := s.FilePath(name)
 	_, err := os.Stat(filePath)
 	if err != nil {
@@ -36,11 +36,11 @@ func (s *functionStorage) Exists(name string) (bool, error) {
 	return true, nil
 }
 
-func (s *functionStorage) FilePath(name string) string {
+func (s *functionStorageClient) FilePath(name string) string {
 	return fmt.Sprintf("%s/%s", s.hostDir, name)
 }
 
-func (s *functionStorage) Names() ([]string, error) {
+func (s *functionStorageClient) Names() ([]string, error) {
 	dir, err := os.ReadDir(s.hostDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read directory: %w", err)

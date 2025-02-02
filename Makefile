@@ -7,3 +7,11 @@ logging_build:
 run_server:
 	go run cmd/http/main.go
 
+run_cron:
+	go run cmd/cron/main.go
+
+run_pubsub:
+	go run cmd/pubsub/main.go
+
+redis:
+	docker run -p 6379:6379 redis
