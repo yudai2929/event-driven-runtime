@@ -12,7 +12,8 @@ import (
 func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /invoke", loggingMiddleware(invokeHandler))
-	mux.HandleFunc("GET /functions", loggingMiddleware(getFunctionHandler))
+	mux.HandleFunc("GET /functions/{function_name}", loggingMiddleware(getFunctionHandler))
+	mux.HandleFunc("GET /functions", loggingMiddleware(listFunctionHandler))
 
 	server := &http.Server{
 		Addr:    ":8080",
@@ -24,7 +25,7 @@ func main() {
 	log.Fatal(server.ListenAndServe())
 }
 
-const functionsDir = "/bin"
+const functionsDir = "functions/bin"
 
 // InvokeRequest is the payload of the request.
 type InvokeRequest struct {
@@ -41,7 +42,12 @@ func invokeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	storage := storage.NewFunctionStorage(functionsDir)
-	if ok := storage.Exists(payload.FunctionName); !ok {
+	ok, err := storage.Exists(payload.FunctionName)
+	if err != nil {
+		http.Error(w, "failed to check function existence", http.StatusInternalServerError)
+		return
+	}
+	if !ok {
 		http.Error(w, "function not found", http.StatusNotFound)
 		return
 	}
@@ -63,15 +69,19 @@ type GetFunctionResponse struct {
 }
 
 func getFunctionHandler(w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query()
-	functionName := query.Get("function_name")
+	functionName := r.PathValue("function_name")
 	if functionName == "" {
 		http.Error(w, "function_name is required", http.StatusBadRequest)
 		return
 	}
 
 	storage := storage.NewFunctionStorage(functionsDir)
-	if ok := storage.Exists(functionName); !ok {
+	ok, err := storage.Exists(functionName)
+	if err != nil {
+		http.Error(w, "failed to check function existence", http.StatusInternalServerError)
+		return
+	}
+	if !ok {
 		http.Error(w, "function not found", http.StatusNotFound)
 		return
 	}
@@ -86,6 +96,21 @@ func getFunctionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+}
+
+func listFunctionHandler(w http.ResponseWriter, _ *http.Request) {
+	storage := storage.NewFunctionStorage(functionsDir)
+	names, err := storage.Names()
+	if err != nil {
+		http.Error(w, "failed to list functions", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(names); err != nil {
+		http.Error(w, "failed to encode response payload", http.StatusInternalServerError)
+		return
+	}
 }
 
 func loggingMiddleware(next http.HandlerFunc) http.HandlerFunc {
