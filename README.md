@@ -45,6 +45,6 @@ go build -o runtime
 - [ ] Multi-runtime support (Python, Node.js, etc.)
 
 ## License
-MIT License
+[MIT License](https://github.com/yudai2929/event-driven-runtime/blob/main/LICENSE)
 ```
 
